@@ -26,6 +26,9 @@ ZSTATES.CHANGEDIR = "change"
 local imgAlert = love.graphics.newImage("images/alert.png")
 local imgDead = love.graphics.newImage("images/dead_1.png")
 
+local lstBlood = {}
+local imgBlood = love.graphics.newImage("images/blood.png")
+
 --sons
 local sndMorsure = love.audio.newSource("sons/morsure.wav","static")
 
@@ -154,11 +157,19 @@ function CreateHuman()
     human.life = 100
     human.dead = false
 
-    human.Hurt = function()                   ---morsure
-        sndMorsure:play()
-        --particules de sang
-        
+    human.Hurt = function()            ---morsure
+               
         human.life = human.life - 0.1
+        
+        if math.random(1,20) == 1 then
+            sndMorsure:play()
+            --particules de sang
+            local blood = {}
+            blood.x = human.x + math.random(-10, 10)
+            blood.y = human.y + math.random(-10, 10)
+            table.insert(lstBlood, blood)
+        end
+
         if human.life < 0 then
             human.life  = 0
             human.dead = true 
@@ -218,6 +229,11 @@ end
 function love.draw()
    
     local i
+
+    for i = 1,#lstBlood do
+        love.graphics.draw(imgBlood, lstBlood[i].x, lstBlood[i].y)
+    end
+
     for i = 1,#sprites do
         local sprite = sprites[i]
 
