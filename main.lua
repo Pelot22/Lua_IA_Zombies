@@ -10,16 +10,35 @@ function math.dist(x1,y1, x2,y2) return ((x2-x1)^2+(y2-y1)^2)^0.5 end
 
 function math.angle(x1,y1, x2,y2) return math.atan2(y2-y1, x2-x1) end
 
+-- function collide(a1, a2)
+--     if (a1==a2) then return false end
+--     local dx = a1.x - a2.x
+--     local dy = a1.y - a2.y
+--     if (math.abs(dx) < a1.image:getWidth()+a2.image:getWidth()) then
+--      if (math.abs(dy) < a1.image:getHeight()+a2.image:getHeight()) then
+--       return true
+--      end
+--     end
+--     return false
+-- end
 function collide(a1, a2)
-    if (a1==a2) then return false end
+    if (a1==a2) then return 0 end
     local dx = a1.x - a2.x
     local dy = a1.y - a2.y
     if (math.abs(dx) < a1.image:getWidth()+a2.image:getWidth()) then
      if (math.abs(dy) < a1.image:getHeight()+a2.image:getHeight()) then
-      return true
+        -- voir de quel cote arrive le zombie a1
+        --NORTH
+        if (a1.y + a1.image:getHeight()) > a2.y and (a1.y + a1.image:getHeight()) < (a2.y + (a2.image:getHeight()/4)) then  return 1 end
+        --SOUTH
+        if a1.y < (a2.y + a2.image:getHeight())  and a1.y > (a2.y + ((a2.image:getHeight()/4)*3)) then  return 2 end
+        --WEST
+        if (a1.x + a1.image:getWidth()) > a2.x and (a1.x + a1.image:getWidth()) < (a2.x + (a2.image:getWidth()/4)) then  return 3 end
+        --EAST
+        if a1.x < (a2.x + a2.image:getWidth()) and  a1.x > (a2.x + ((a2.image:getWidth()/4)*3)) then  return 4 end    
      end
     end
-    return false
+    return 0
 end
 
 screenWidth = 0
@@ -42,7 +61,7 @@ local lstBlood = {}
 local imgBlood = love.graphics.newImage("images/blood.png")
 
 --sons
-local sndMorsure = love.audio.newSource("sons/morsure.wav","static")
+local sndMorsure = love.audio.newSource("sons/cri.wav","static")
 
 function CreateSprite(pList, pType, psImageFile, pnFrames, pX, pY, pScale)
     local sprite = {}
@@ -61,6 +80,7 @@ function CreateSprite(pList, pType, psImageFile, pnFrames, pX, pY, pScale)
     for i = 1,pnFrames do 
         sprite.images[i] = love.graphics.newImage("images/"..psImageFile.."_"..tostring(i)..".png")
     end   
+    sprite.image = sprite.images[1]
     sprite.width = sprite.images[1]:getWidth()
     sprite.height = sprite.images[1]:getHeight()
     
@@ -208,33 +228,61 @@ end
 
 function love.update(dt)
     local i 
+
+    local pCollide = false
+    local pCollideNorth = false
+    local pCollideSouth = false
+    local pCollideEast = false
+    local pCollideWest = false
+
     for i =1,#sprites do
         local sprite = sprites[i]
         sprite.currentFrame = sprite.currentFrame + 5 * dt
         if sprite.currentFrame > (#sprite.images + 1) then  
             sprite.currentFrame = 1
         end
+        sprite.image = sprite.images[math.floor(sprite.currentFrame)]
 
         if sprite.type == "zombie" then
             UpdateZombie(sprite, sprites)
-        end
-
+            local retourCollide = collide(sprite, human) 
+            if retourCollide == 1 then
+                pCollideNorth = true
+            elseif retourCollide == 2 then
+                pCollideSouth = true
+            elseif retourCollide == 3 then
+                pCollideWest = true
+            elseif retourCollide == 4 then
+                pCollideEast = true
+            end
+        end 
+        
         sprite.x = sprite.x + (sprite.vx * dt)
         sprite.y = sprite.y + (sprite.vy * dt)
     end
 
     -- mouvement de human
-    if love.keyboard.isDown("left") then
-        human.x = human.x - human.speed
-    end
-    if love.keyboard.isDown("right") then
-        human.x = human.x + human.speed
-    end
-    if love.keyboard.isDown("up") then
-        human.y = human.y - human.speed
-    end
-    if love.keyboard.isDown("down") then
-        human.y = human.y + human.speed
+    if human.dead == false then
+        if love.keyboard.isDown("left") then
+            if human.x > human.width and pCollideWest == false then
+                human.x = human.x - human.speed
+            end
+        end
+        if love.keyboard.isDown("right") then
+            if human.x < (screenWidth - human.width) and pCollideEast == false then
+                human.x = human.x + human.speed
+            end
+        end
+        if love.keyboard.isDown("up") then
+            if human.y > human.height and pCollideNorth == false then
+                human.y = human.y - human.speed
+            end
+        end
+        if love.keyboard.isDown("down") then
+            if (human.y + human.height) < screenHeight and pCollideSouth == false then
+                human.y = human.y + human.speed
+            end
+        end
     end
 end
 
